@@ -11,7 +11,7 @@
 ;call these prints, and print
 (defn bytes-to-hex
   [bytes]
-    (apply str (map #(format "%x" %) bytes)))
+    (apply str (map #(format "%02x" %) bytes)))
 
 (defn bytes-to-base64
   [bytes]
