@@ -51,12 +51,11 @@
                [k (/ v (count alpha))]))))
 
 (defn frequency-test
-  [in table]
+  [in expected]
   (let [ranked (sort-by first
                         (for [c (range 0 256)]
                           (let [s (apply str (map (comp char #(bit-xor (int c) %)) in))
-                                score (square-difference (build-frequency-table s) character-frequency-table)]
-                            (list score (char c) s))))
-        winner (first ranked)
-        _ (println (format "Byte %c scored %.3f and produced '%s'." (second winner) (first winner) (last winner)))]
-    (last (first ranked))))
+                                score (square-difference (build-frequency-table s expected)
+                                                         expected)]
+                            (list score c s))))]
+    ranked))
