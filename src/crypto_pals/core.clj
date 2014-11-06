@@ -29,6 +29,13 @@
   [string]
   (apply str (filter #(not (clojure.string/blank? (str %))) string)))
 
+(defn count-bits [n]
+  (loop [c 0
+         v n]
+    (if (zero? v)
+      c
+      (recur (inc c) (bit-and v (dec v))))))
+
 ;https://en.wikipedia.org/wiki/Letter_frequency#Relative_frequencies_of_letters_in_the_English_language
 (defn english-expected-frequencies
   []
