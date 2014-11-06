@@ -36,6 +36,16 @@
       c
       (recur (inc c) (bit-and v (dec v))))))
 
+(defn hamming-distance
+  [x y]
+  (let
+    [bx (map (comp byte int) x)
+     by (map (comp byte int) y)
+     similar (map bit-and bx by)
+     cx (reduce + (map (comp count-bits bit-xor) bx similar))
+     cy (reduce + (map (comp count-bits bit-xor) by similar))]
+                (+ cx cy)))
+
 ;https://en.wikipedia.org/wiki/Letter_frequency#Relative_frequencies_of_letters_in_the_English_language
 (defn english-expected-frequencies
   []
