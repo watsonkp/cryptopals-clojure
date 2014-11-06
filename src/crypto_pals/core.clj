@@ -25,6 +25,10 @@
   [x y]
   (reduce + (map second (merge-with #(math/expt (- %1 %2) 2) x y))))
 
+(defn filter-whitespace
+  [string]
+  (apply str (filter #(not (clojure.string/blank? (str %))) string)))
+
 ;https://en.wikipedia.org/wiki/Letter_frequency#Relative_frequencies_of_letters_in_the_English_language
 (defn english-expected-frequencies
   []
