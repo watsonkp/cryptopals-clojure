@@ -53,7 +53,7 @@
 (defn frequency-test
   [in table]
   (let [ranked (sort-by first
-                        (for [c (range 65 123)]
+                        (for [c (range 0 256)]
                           (let [s (apply str (map (comp char #(bit-xor (int c) %)) in))
                                 score (square-difference (build-frequency-table s) character-frequency-table)]
                             (list score (char c) s))))
