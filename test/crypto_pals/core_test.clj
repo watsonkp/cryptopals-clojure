@@ -33,3 +33,17 @@
     (is (= (last (first (frequency-test (hex-to-bytes set-1-challenge-3-input)
                                         (english-expected-frequencies))))
            set-1-challenge-3-output))))
+
+(def set-1-challenge-4-input "test/crypto_pals/set-1-challenge-4.txt")
+(def set-1-challenge-4-output "Now that the party is jumping\n")
+
+(deftest set-1-challenge-4
+  (testing "Detect single-character XOR"
+    (is (= (with-open [r (clojure.java.io/reader set-1-challenge-4-input)]
+             (let [ranked (sort-by first
+                                   (apply concat
+                                          (for [line (line-seq r)]
+                                            (frequency-test (hex-to-bytes line)
+                                                            (english-expected-frequencies)))))]
+               (last (first ranked))))
+           set-1-challenge-4-output))))
