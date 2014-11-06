@@ -59,3 +59,10 @@
                                                          expected)]
                             (list score c s))))]
     ranked))
+
+(defn repeating-key-xor
+  [message key]
+  (let
+     [key-length (count key)
+      message-subs (partition key-length key-length [] message)]
+    (bytes-to-hex (mapcat #(map bit-xor % key) message-subs))))
