@@ -22,7 +22,7 @@
 
 (deftest frequency
   (testing "Probabilities should accumulate to nearly 1"
-    (is (< (Math/abs (- 1.0 (reduce + (map second (seq character-frequency-table)))))
+    (is (< (Math/abs (- 1.0 (reduce + (map second (seq (english-expected-frequencies))))))
            0.0001))))
 
 (def set-1-challenge-3-input "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736")
@@ -30,5 +30,6 @@
 
 (deftest set-1-challenge-3
   (testing "Single-byte XOR cipher"
-    (is (= (frequency-test (hex-to-bytes set-1-challenge-3-input) character-frequency-table)
+    (is (= (last (first (frequency-test (hex-to-bytes set-1-challenge-3-input)
+                                        (english-expected-frequencies))))
            set-1-challenge-3-output))))
