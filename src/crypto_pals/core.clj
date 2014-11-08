@@ -31,7 +31,8 @@
 
 (defn count-bits [n]
   (loop [c 0
-         v n]
+         ;hack to make negatively signed bytes positive numbers
+         v (bit-and n 0xff)]
     (if (zero? v)
       c
       (recur (inc c) (bit-and v (dec v))))))
