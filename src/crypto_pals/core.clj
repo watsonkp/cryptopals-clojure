@@ -67,7 +67,7 @@
   [in expected]
   (let [ranked (sort-by first
                         (for [c (range 0 256)]
-                          (let [s (apply str (map (comp char #(bit-xor (int c) %)) in))
+                          (let [s (apply str (map (comp char #(bit-and 0xff %) #(bit-xor c %)) in))
                                 score (square-difference (build-frequency-table s expected)
                                                          expected)]
                             (list score c s))))]
