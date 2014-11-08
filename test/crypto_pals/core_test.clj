@@ -99,3 +99,22 @@
               (apply str (map (comp char #(bit-and 0xff %))
                               key-bytes)))
            set-1-challenge-6-key))))
+
+(def set-1-challenge-6-decrypted-message "test/crypto_pals/set-1-challenge-6-decoded.txt")
+(deftest set-1-challenge-6-decode
+  (testing "Decoding broken repeating-key XOR"
+    (is (=(let
+            [clean-message (apply str (remove #(= \newline %)
+                                               (slurp set-1-challenge-6-message)))
+             message-bytes (b64/decode (.getBytes clean-message))
+             message-blocks (partition set-1-challenge-6-key-size
+                                       set-1-challenge-6-key-size
+                                       []
+                                       message-bytes)
+             byte-key (map (comp byte int) set-1-challenge-6-key)
+             decrypted-message-bytes (mapcat #(map bit-xor byte-key %)
+                                             message-blocks)
+             decrypted-message (apply str (map (comp char #(bit-and 0xff %))
+                                               decrypted-message-bytes))]
+            decrypted-message)
+          (slurp set-1-challenge-6-decrypted-message)))))
