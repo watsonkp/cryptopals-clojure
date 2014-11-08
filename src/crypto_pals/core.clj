@@ -100,3 +100,9 @@
     [transposed-message (transpose (partition size message))]
     (for [row transposed-message]
         (second (first (frequency-test row (english-expected-frequencies)))))))
+
+(defn pad-pkcs7
+  [message block-size]
+  (let
+    [padding (repeat block-size 0x04)]
+    (take block-size (concat message padding))))

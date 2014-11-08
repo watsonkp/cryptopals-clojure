@@ -170,3 +170,14 @@
                                  ecb-message))]
              ecb-message)
            set-1-challenge-8-ecb-message))))
+
+(def challenge-9-message "YELLOW SUBMARINE")
+(def challenge-9-block-size 20)
+(def challenge-9-padded-message '(89 69 76 76 79 87 32 83 85 66 77 65 82 73 78 69 4 4 4 4))
+(deftest challenge-9
+  (testing "Implement PKCS#7 padding"
+    (is (= (let
+             [byte-message (.getBytes challenge-9-message)]
+             (pad-pkcs7 byte-message
+                        challenge-9-block-size))
+           challenge-9-padded-message))))
