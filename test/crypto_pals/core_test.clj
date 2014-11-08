@@ -86,3 +86,16 @@
                                            (range 2 41))]
               (first (first ranked-sizes)))
         set-1-challenge-6-key-size))))
+
+(def set-1-challenge-6-key "Terminator X: Bring the noise")
+(deftest set-1-challenge-6-break-key
+  (testing "Break repeating-key XOR key"
+    (is (= (let
+             [clean-message (apply str (remove #(= \newline %)
+                                               (slurp set-1-challenge-6-message)))
+              message-bytes (b64/decode (.getBytes clean-message))
+              key-bytes (break-key message-bytes
+                                   set-1-challenge-6-key-size)]
+              (apply str (map (comp char #(bit-and 0xff %))
+                              key-bytes)))
+           set-1-challenge-6-key))))

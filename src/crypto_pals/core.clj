@@ -25,6 +25,8 @@
   [x y]
   (reduce + (map second (merge-with #(math/expt (- %1 %2) 2) x y))))
 
+(defn transpose [m] (apply mapv vector m))
+
 (defn filter-whitespace
   [string]
   (apply str (filter #(not (clojure.string/blank? (str %))) string)))
@@ -91,3 +93,10 @@
                                            size)
                                        block-pairs))
                         (count block-pairs)))))))
+
+(defn break-key
+  [message size]
+  (let
+    [transposed-message (transpose (partition size message))]
+    (for [row transposed-message]
+        (second (first (frequency-test row (english-expected-frequencies)))))))
