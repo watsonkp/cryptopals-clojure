@@ -79,3 +79,15 @@
      [key-length (count key)
       message-subs (partition key-length key-length [] message)]
     (bytes-to-hex (mapcat #(map bit-xor % key) message-subs))))
+
+(defn rank-key-sizes [message sizes]
+  (sort-by second
+           (for [size sizes]
+             (let
+               [block-pairs (partition 2 1 (partition size message))]
+               (list size
+                     (/ (reduce + (map #(/ (hamming-distance (first %)
+                                                             (second %))
+                                           size)
+                                       block-pairs))
+                        (count block-pairs)))))))

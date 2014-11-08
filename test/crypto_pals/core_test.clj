@@ -1,6 +1,7 @@
 (ns crypto-pals.core-test
   (:require [clojure.test :refer :all]
-            [crypto-pals.core :refer :all]))
+            [crypto-pals.core :refer :all]
+            [clojure.data.codec.base64 :as b64 :refer :all] ))
 
 (def set-1-challenge-1-input "49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d")
 (def set-1-challenge-1-output "SSdtIGtpbGxpbmcgeW91ciBicmFpbiBsaWtlIGEgcG9pc29ub3VzIG11c2hyb29t")
@@ -72,3 +73,16 @@
     (is (= (hamming-distance (byte-array (map byte [-112 -104]))
                              (byte-array (map byte [84 -26])))
            9))))
+
+(def set-1-challenge-6-message "test/crypto_pals/set-1-challenge-6.txt")
+(def set-1-challenge-6-key-size 29)
+(deftest set-1-challenge-6-break-key-size
+  (testing "Break repeating-key XOR key size"
+    (is (= (let
+             [clean-message (apply str (remove #(= \newline %)
+                                               (slurp set-1-challenge-6-message)))
+              message-bytes (b64/decode (.getBytes clean-message))
+              ranked-sizes (rank-key-sizes message-bytes
+                                           (range 2 41))]
+              (first (first ranked-sizes)))
+        set-1-challenge-6-key-size))))
