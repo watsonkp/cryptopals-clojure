@@ -60,3 +60,9 @@
     (is (= (repeating-key-xor (map (comp byte int) set-1-challenge-5-message)
                               (map (comp byte int) set-1-challenge-5-key))
            set-1-challenge-5-output))))
+
+(deftest hamming-test
+  (testing "Hamming distance of two strings"
+    (is (=(hamming-distance (.getBytes "this is a test")
+                            (.getBytes "wokka wokka!!!"))
+          37))))
