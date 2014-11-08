@@ -53,13 +53,13 @@
               \q 0.00095 \r 0.05987 \s 0.06327 \t 0.09056
               \u 0.02758 \v 0.00978 \w 0.02360 \x 0.00150
               \y 0.01974 \z 0.00074}
-     special (concat (range 32) (range 33 65) (range 91 97) (range 123 256))]
-    (merge (zipmap (map char special) (repeat (count special) 0)) regular)))
+     special {\* 0.0 \space 0.0 \. 0.0 \, 0.0}]
+    (merge regular special)))
 
 (defn build-frequency-table
   [string expected]
   (let [alpha (filter (set (map first expected))
-                      (clojure.string/lower-case string))]
+                      (clojure.string/lower-case (clojure.string/replace string #"[^a-zA-Z .,]" "*")))]
     (into {} (for [[k v ] (frequencies alpha)]
                [k (/ v (count alpha))]))))
 
