@@ -66,3 +66,9 @@
     (is (=(hamming-distance (.getBytes "this is a test")
                             (.getBytes "wokka wokka!!!"))
           37))))
+
+(deftest hamming-test-signed
+  (testing "Hamming distance when bytes appear to be signed"
+    (is (= (hamming-distance (byte-array (map byte [-112 -104]))
+                             (byte-array (map byte [84 -26])))
+           9))))
