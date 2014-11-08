@@ -118,3 +118,21 @@
                                                decrypted-message-bytes))]
             decrypted-message)
           (slurp set-1-challenge-6-decrypted-message)))))
+
+(def set-1-challenge-7-message "test/crypto_pals/set-1-challenge-7.txt")
+(def set-1-challenge-7-key "YELLOW SUBMARINE")
+(def set-1-challenge-7-decrypted-message "test/crypto_pals/set-1-challenge-7-decoded.txt")
+(deftest set-1-challenge-7
+  (testing "AES in ECB mode"
+    (is (= (let
+             [clean-message (apply str (remove #(= \newline %)
+                                               (slurp set-1-challenge-7-message)))
+              byte-message (b64/decode (.getBytes clean-message))
+              key-spec (javax.crypto.spec.SecretKeySpec. (.getBytes set-1-challenge-7-key) "AES")
+              cipher (javax.crypto.Cipher/getInstance "AES/ECB/NoPadding")]
+             (.init cipher javax.crypto.Cipher/DECRYPT_MODE key-spec)
+             (let
+               [decrypted-message (apply str (map (comp char #(bit-and 0xff %))
+                                                  (.doFinal cipher byte-message)))]
+               decrypted-message))
+           (slurp set-1-challenge-7-decrypted-message)))))
