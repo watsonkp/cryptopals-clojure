@@ -119,20 +119,14 @@
             decrypted-message)
           (slurp set-1-challenge-6-decrypted-message)))))
 
-(def challenge-7-message "test/crypto_pals/challenge-7.txt")
-(def challenge-7-key "YELLOW SUBMARINE")
-(def challenge-7-decrypted-message "test/crypto_pals/challenge-7-decoded.txt")
 (deftest challenge-7
   (testing "AES in ECB mode"
     (is (= (let
-             [clean-message (apply str (remove #(= \newline %)
-                                               (slurp challenge-7-message)))
-              byte-message (b64/decode (.getBytes clean-message))
-              byte-key (.getBytes challenge-7-key)
-              decrypted-byte-message (decrypt byte-key byte-message)]
-             (apply str (map (comp char #(bit-and 0xff %))
-                             decrypted-byte-message)))
-           (slurp challenge-7-decrypted-message)))))
+              [cipher-text (base64-file-to-bytes "test/crypto_pals/challenge-7.txt")
+               cipher-key (map byte "YELLOW SUBMARINE")
+               plain-text (decrypt cipher-key cipher-text)]
+             (bytes-to-string plain-text))
+           (slurp "test/crypto_pals/challenge-7-decoded.txt")))))
 
 (def set-1-challenge-8-messages "test/crypto_pals/set-1-challenge-8.txt")
 (def set-1-challenge-8-ecb-message (str "d880619740a8a19b7840a8a31c810a3d"
@@ -182,11 +176,10 @@
 (deftest challenge-10
   (testing "Implement CBC mode"
     (is (= (let
-             [key (.getBytes "YELLOW SUBMARINE")
-              block-size (count key)
-              iv-block (vector (map byte (repeat block-size 0)))
-              cipher (base64-file-to-bytes "test/crypto_pals/challenge-10.txt")
-              blocked (decrypt key cipher)
-              plain (cbc-deblock cipher blocked iv-block block-size)]
-             (bytes-to-string (flatten plain)))
+             [cipher-key (map byte "YELLOW SUBMARINE")
+              iv (map byte (repeat (count cipher-key) 0))
+              cipher-text (base64-file-to-bytes "test/crypto_pals/challenge-10.txt")
+              blocked-text (decrypt cipher-key cipher-text)
+              plain-text (cbc-deblock cipher-text blocked-text iv)]
+             (bytes-to-string plain-text))
            (slurp "test/crypto_pals/challenge-10-plain.txt")))))

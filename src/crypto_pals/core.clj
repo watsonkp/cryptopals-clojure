@@ -4,11 +4,12 @@
 
 (defn base64-file-to-bytes
   [path]
-  (b64/decode
-   (byte-array
-    (map byte
-         (remove #(= \newline %)
-                 (slurp path))))))
+  (seq
+   (b64/decode
+    (byte-array
+     (map byte
+          (remove #(= \newline %)
+                  (slurp path)))))))
 
 (defn write-to-file
   [path content]
@@ -129,16 +130,21 @@
      (.doFinal cipher message)))
 
 (defn decrypt
-  [key message]
+  [cipher-key cipher-text]
   (let
-    [key-spec (javax.crypto.spec.SecretKeySpec. key "AES")
+    [key-spec (javax.crypto.spec.SecretKeySpec. (byte-array cipher-key) "AES")
     cipher (javax.crypto.Cipher/getInstance "AES/ECB/NoPadding")]
     (.init cipher javax.crypto.Cipher/DECRYPT_MODE key-spec)
-    (.doFinal cipher message)))
+    (seq (.doFinal cipher (byte-array cipher-text)))))
 
 (defn cbc-deblock
-  [cipher blocked iv block-size]
-  (map #(map bit-xor %1 %2)
-       (partition block-size blocked)
-       (concat iv
-               (partition block-size cipher))))
+  [cipher-text plain-text iv]
+  (let
+    [block-size (count iv)
+     cipher-text (concat (list iv)
+                         (partition block-size cipher-text))
+     plain-text (partition block-size plain-text)]
+    (flatten
+     (map #(map bit-xor %1 %2)
+          plain-text
+          cipher-text))))
