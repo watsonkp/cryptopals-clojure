@@ -115,8 +115,13 @@
 (defn pad-pkcs7
   [message block-size]
   (let
-    [padding (repeat block-size 0x04)]
-    (take block-size (concat message padding))))
+    [padding (repeat block-size
+                     0x04)]
+    (flatten
+     (partition block-size
+                block-size
+                padding
+                message))))
 
 (defn encrypt
   [key message]
