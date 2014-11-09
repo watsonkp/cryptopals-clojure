@@ -55,6 +55,12 @@
   (reduce + (map (comp count-bits bit-xor)
                  x y)))
 
+(defn random-bytes [n]
+  (let [rng          (java.security.SecureRandom.)
+        random-bytes (byte-array n)]
+    (.nextBytes rng random-bytes)
+    (seq random-bytes)))
+
 ;https://en.wikipedia.org/wiki/Letter_frequency#Relative_frequencies_of_letters_in_the_English_language
 (defn english-expected-frequencies
   []
