@@ -123,13 +123,11 @@
                 padding
                 message))))
 
-(defn encrypt
-  [key message]
-  (let
-    [key-spec (javax.crypto.spec.SecretKeySpec. key "AES")
-     cipher (javax.crypto.Cipher/getInstance "AES/ECB/NoPadding")]
-     (.init cipher javax.crypto.Cipher/ENCRYPT_MODE key-spec)
-     (.doFinal cipher message)))
+(defn encrypt [cipher-key plain-text]
+  (let [key-spec (javax.crypto.spec.SecretKeySpec. (byte-array cipher-key) "AES")
+        cipher   (javax.crypto.Cipher/getInstance "AES/ECB/NoPadding")]
+    (.init cipher javax.crypto.Cipher/ENCRYPT_MODE key-spec)
+    (seq (.doFinal cipher (byte-array plain-text)))))
 
 (defn decrypt
   [cipher-key cipher-text]
