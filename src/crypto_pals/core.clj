@@ -10,6 +10,11 @@
          (remove #(= \newline %)
                  (slurp path))))))
 
+(defn write-to-file
+  [path content]
+  (with-open [w (clojure.java.io/writer path)]
+    (.write w content)))
+
 ; need to work on numbers not bytes
 (defn hex-to-bytes
   [hex]
