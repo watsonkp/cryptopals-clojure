@@ -107,6 +107,14 @@
     [padding (repeat block-size 0x04)]
     (take block-size (concat message padding))))
 
+(defn encrypt
+  [key message]
+  (let
+    [key-spec (javax.crypto.spec.SecretKeySpec. key "AES")
+     cipher (javax.crypto.Cipher/getInstance "AES/ECB/NoPadding")]
+     (.init cipher javax.crypto.Cipher/ENCRYPT_MODE key-spec)
+     (.doFinal cipher message)))
+
 (defn decrypt
   [key message]
   (let
