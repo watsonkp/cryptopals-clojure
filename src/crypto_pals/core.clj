@@ -143,6 +143,13 @@
     (.init cipher javax.crypto.Cipher/DECRYPT_MODE key-spec)
     (seq (.doFinal cipher (byte-array cipher-text)))))
 
+(defn cbc-block [iv cipher plain-text]
+  (let [encrypt-block (comp list cipher #(map bit-xor %1 %2))
+        encrypt-all   (comp flatten #(drop 1 %) (partial reduce #(concat %1
+                                                                         (encrypt-block (last %1) %2))))]
+    (encrypt-all (list iv)
+                 (partition (count iv) plain-text))))
+
 (defn cbc-deblock [cipher-text plain-text iv]
   (let [block-size  (count iv)
         cipher-text (concat (list iv)
@@ -150,3 +157,21 @@
         plain-text  (partition block-size plain-text)
         deblock     (comp flatten (partial map #(map bit-xor %1 %2)))]
     (deblock plain-text cipher-text)))
+
+(defn encryption-oracle [plain-text]
+  (let [block-size 16
+        cipher-key (random-bytes block-size)
+        rand-zero-pad (comp #(map byte %) #(repeat % 0))
+        rand-5-10 #(+ 5 (rand-int 6))
+        padded-message (pad-pkcs7 (concat (rand-zero-pad (rand-5-10))
+                                          plain-text
+                                          (rand-zero-pad (rand-5-10)))
+                                  block-size)]
+    (if (= 0 (rand-int 2))
+      ;use ECB
+      (vector "ECB" (encrypt cipher-key padded-message))
+      ;use CBC
+      (let
+        [iv (random-bytes block-size)
+         cipher (partial cbc-block iv (partial encrypt cipher-key))]
+        (vector "CBC" (cipher padded-message))))))
