@@ -30,9 +30,9 @@
   [bytes]
   (apply str(map char (b64/encode (byte-array bytes)))))
 
-(defn print-as-string
+(defn bytes-to-string
   [bytes]
-  (println (apply str (map char bytes))))
+  (apply str (map (comp char #(bit-and 0xff %)) bytes)))
 
 (defn square-difference
   [x y]
