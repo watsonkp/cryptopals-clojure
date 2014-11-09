@@ -135,3 +135,10 @@
     cipher (javax.crypto.Cipher/getInstance "AES/ECB/NoPadding")]
     (.init cipher javax.crypto.Cipher/DECRYPT_MODE key-spec)
     (.doFinal cipher message)))
+
+(defn cbc-deblock
+  [cipher blocked iv block-size]
+  (map #(map bit-xor %1 %2)
+       (partition block-size blocked)
+       (concat iv
+               (partition block-size cipher))))
