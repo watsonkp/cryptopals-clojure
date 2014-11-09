@@ -178,3 +178,15 @@
              (pad-pkcs7 byte-message
                         challenge-9-block-size))
            challenge-9-padded-message))))
+
+(deftest challenge-10
+  (testing "Implement CBC mode"
+    (is (= (let
+             [key (.getBytes "YELLOW SUBMARINE")
+              block-size (count key)
+              iv-block (vector (map byte (repeat block-size 0)))
+              cipher (base64-file-to-bytes "test/crypto_pals/challenge-10.txt")
+              blocked (decrypt key cipher)
+              plain (cbc-deblock cipher blocked iv-block block-size)]
+             (bytes-to-string (flatten plain)))
+           (slurp "test/crypto_pals/challenge-10-plain.txt")))))
