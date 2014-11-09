@@ -137,14 +137,10 @@
     (.init cipher javax.crypto.Cipher/DECRYPT_MODE key-spec)
     (seq (.doFinal cipher (byte-array cipher-text)))))
 
-(defn cbc-deblock
-  [cipher-text plain-text iv]
-  (let
-    [block-size (count iv)
-     cipher-text (concat (list iv)
-                         (partition block-size cipher-text))
-     plain-text (partition block-size plain-text)]
-    (flatten
-     (map #(map bit-xor %1 %2)
-          plain-text
-          cipher-text))))
+(defn cbc-deblock [cipher-text plain-text iv]
+  (let [block-size  (count iv)
+        cipher-text (concat (list iv)
+                            (partition block-size cipher-text))
+        plain-text  (partition block-size plain-text)
+        deblock     (comp flatten (partial map #(map bit-xor %1 %2)))]
+    (deblock plain-text cipher-text)))
