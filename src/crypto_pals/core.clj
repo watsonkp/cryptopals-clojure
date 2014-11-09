@@ -4,12 +4,10 @@
 
 (defn base64-file-to-bytes
   [path]
-  (seq
-   (b64/decode
-    (byte-array
-     (map byte
-          (remove #(= \newline %)
-                  (slurp path)))))))
+  (let
+    [clean (partial remove #(= \newline %))
+     pipeline (comp seq b64/decode byte-array (partial map byte))]
+    (pipeline (clean (slurp path)))))
 
 (defn write-to-file
   [path content]
