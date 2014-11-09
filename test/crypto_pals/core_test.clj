@@ -183,3 +183,22 @@
               plain-text (cbc-deblock cipher-text blocked-text iv)]
              (bytes-to-string plain-text))
            (slurp "test/crypto_pals/challenge-10-plain.txt")))))
+
+(deftest challenge-11
+  (testing "An ECB/CBC detection oracle"
+    (is (= (let [plain-text  (map byte (slurp "test/crypto_pals/repeating-plain-text.txt"))
+                 trials      100]
+             (loop [correct 0
+                    trial   0]
+               (if (= trial trials)
+                 (/ correct trials)
+                 (let [[method cipher-text] (encryption-oracle plain-text)
+                       true-positive        (and (= method "CBC")
+                                                 (cbc? cipher-text))
+                       true-negative        (and (= method "ECB")
+                                                 (not (cbc? cipher-text)))]
+                   (recur (if (or true-positive true-negative)
+                            (inc correct)
+                            correct)
+                          (inc trial))))))
+           1))))

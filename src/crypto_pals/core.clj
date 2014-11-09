@@ -118,6 +118,12 @@
     (for [row transposed-message]
         (second (first (frequency-test row (english-expected-frequencies)))))))
 
+(defn cbc? [cipher-text]
+  (let [blocks          (partition 16 cipher-text)
+        count-distinct  (comp count frequencies)
+        duplicates      (- (count blocks) (count-distinct blocks))]
+  (= 0 duplicates)))
+
 (defn pad-pkcs7
   [message block-size]
   (let
