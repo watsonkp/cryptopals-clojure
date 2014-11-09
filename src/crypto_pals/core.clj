@@ -2,6 +2,14 @@
   (:require [clojure.data.codec.base64 :as b64]
             [clojure.math.numeric-tower :as math]))
 
+(defn base64-file-to-bytes
+  [path]
+  (b64/decode
+   (byte-array
+    (map byte
+         (remove #(= \newline %)
+                 (slurp path))))))
+
 ; need to work on numbers not bytes
 (defn hex-to-bytes
   [hex]
