@@ -190,3 +190,13 @@
   (let [block-size (count cipher-key)]
     (encrypt cipher-key (pad-pkcs7 (concat prefix plain-text)
                                    block-size))))
+
+(defn break-ecb-byte [oracle target known]
+  (let [block-size (count target)
+        get-prefix (comp vec flatten #(cons % known) #(map byte %) #(repeat % \A))
+        prefix (get-prefix (- block-size 1 (count known)))
+        suffixes (map byte (range 32 127))
+        block-keys (map #(conj prefix %) suffixes)
+        get-cipher-block #(take block-size (oracle %))
+        block-dict (reduce #(assoc %1 (get-cipher-block %2) (last %2)) {} block-keys)]
+    (block-dict target)))
