@@ -202,3 +202,25 @@
                             correct)
                           (inc trial))))))
            1))))
+
+(def challenge-11-unknown-string (str "Um9sbGluJyBpbiBteSA1LjAKV2l0aCBt"
+                                      "eSByYWctdG9wIGRvd24gc28gbXkgaGFp"
+                                      "ciBjYW4gYmxvdwpUaGUgZ2lybGllcyBv"
+                                      "biBzdGFuZGJ5IHdhdmluZyBqdXN0IHRv"
+                                      "IHNheSBoaQpEaWQgeW91IHN0b3A/IE5v"
+                                      "LCBJIGp1c3QgZHJvdmUgYnkK"))
+(deftest challenge-12-block-size
+  (testing "Derivation of block size from AES ECB"
+    (is (=(let [cipher-key (random-bytes 16)
+                plain-text (base64-string-to-bytes challenge-11-unknown-string)
+                get-cipher-length (comp count (partial aes-ecb-oracle cipher-key))
+                unpadded-length (get-cipher-length plain-text)
+                get-prefix (comp #(map byte %) #(repeat % \A))]
+            (loop [n 0]
+              (let [length (get-cipher-length (concat (get-prefix n)
+                                                      plain-text))
+                    diff (- length unpadded-length)]
+                (if (< 0 diff)
+                  diff
+                  (recur (inc n))))))
+        16))))
