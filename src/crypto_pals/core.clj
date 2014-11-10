@@ -2,6 +2,10 @@
   (:require [clojure.data.codec.base64 :as b64]
             [clojure.math.numeric-tower :as math]))
 
+(defn base64-string-to-bytes [s]
+  (let [convert (comp seq b64/decode byte-array (partial map byte))]
+    (convert s)))
+
 (defn base64-file-to-bytes [path]
   (let
     [clean (partial remove #(= \newline %))
