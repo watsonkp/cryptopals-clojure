@@ -224,3 +224,10 @@
                   diff
                   (recur (inc n))))))
         16))))
+
+(deftest challenge-12-method
+  (testing "Derivation of block cipher mode from cipher text."
+    (is (let [cipher-key (random-bytes 16)
+              plain-text (map byte (slurp "test/crypto_pals/repeating-plain-text.txt"))
+              cipher-text (aes-ecb-oracle cipher-key plain-text)]
+          (not (cbc? cipher-text))))))
