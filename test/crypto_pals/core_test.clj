@@ -231,3 +231,12 @@
               oracle (partial aes-ecb-oracle cipher-key plain-text)
               prefix (map byte (repeat 32 \A))]
           (not (cbc? (oracle prefix)))))))
+
+(deftest challenge-12-first-block
+  (testing "Decryption of first ECB block."
+    (is (= (let [cipher-key (random-bytes 16)
+                 block-size (count cipher-key)
+                 plain-text (base64-string-to-bytes challenge-11-unknown-string)
+                 oracle (partial aes-ecb-oracle cipher-key plain-text)]
+             (bytes-to-string (break-ecb-block oracle block-size)))
+           "Rollin' in my 5."))))
