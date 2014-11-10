@@ -200,3 +200,13 @@
         get-cipher-block #(take block-size (oracle %))
         block-dict (reduce #(assoc %1 (get-cipher-block %2) (last %2)) {} block-keys)]
     (block-dict target)))
+
+(defn break-ecb-block [oracle block-size]
+  (loop [block []
+         position (- block-size 1)]
+    (if (< position 0)
+      block
+      (let [prefix (map byte (repeat position \A))
+            target (take block-size (oracle prefix))
+            next-byte (break-ecb-byte oracle target block)]
+        (recur (conj block next-byte) (dec position))))))
