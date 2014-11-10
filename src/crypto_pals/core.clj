@@ -185,3 +185,7 @@
         [iv (random-bytes block-size)
          cipher (partial cbc-block iv (partial encrypt cipher-key))]
         (vector "CBC" (cipher padded-message))))))
+
+(defn aes-ecb-oracle [cipher-key plain-text]
+  (let [block-size (count cipher-key)]
+    (encrypt cipher-key (pad-pkcs7 plain-text block-size))))
