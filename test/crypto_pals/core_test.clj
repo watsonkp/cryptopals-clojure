@@ -210,15 +210,14 @@
                                       "IHNheSBoaQpEaWQgeW91IHN0b3A/IE5v"
                                       "LCBJIGp1c3QgZHJvdmUgYnkK"))
 (deftest challenge-12-block-size
-  (testing "Derivation of block size from AES ECB"
+  (testing "Block size detection."
     (is (=(let [cipher-key (random-bytes 16)
                 plain-text (base64-string-to-bytes challenge-11-unknown-string)
-                get-cipher-length (comp count (partial aes-ecb-oracle cipher-key))
-                unpadded-length (get-cipher-length plain-text)
+                get-cipher-length (comp count (partial aes-ecb-oracle cipher-key plain-text))
+                unpadded-length (get-cipher-length "")
                 get-prefix (comp #(map byte %) #(repeat % \A))]
             (loop [n 0]
-              (let [length (get-cipher-length (concat (get-prefix n)
-                                                      plain-text))
+              (let [length (get-cipher-length (get-prefix n))
                     diff (- length unpadded-length)]
                 (if (< 0 diff)
                   diff
@@ -226,8 +225,9 @@
         16))))
 
 (deftest challenge-12-method
-  (testing "Derivation of block cipher mode from cipher text."
+  (testing "Block cipher mode detection."
     (is (let [cipher-key (random-bytes 16)
-              plain-text (map byte (slurp "test/crypto_pals/repeating-plain-text.txt"))
-              cipher-text (aes-ecb-oracle cipher-key plain-text)]
-          (not (cbc? cipher-text))))))
+              plain-text (base64-string-to-bytes challenge-11-unknown-string)
+              oracle (partial aes-ecb-oracle cipher-key plain-text)
+              prefix (map byte (repeat 32 \A))]
+          (not (cbc? (oracle prefix)))))))
