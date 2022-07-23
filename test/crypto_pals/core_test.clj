@@ -165,11 +165,11 @@
 (def challenge-9-message "YELLOW SUBMARINE")
 (def challenge-9-block-size 20)
 (def challenge-9-padded-message '(89 69 76 76 79 87 32 83 85 66 77 65 82 73 78 69 4 4 4 4))
-(deftest challenge-9
+(deftest ^:challenge-12 challenge-9
   (testing "Implement PKCS#7 padding"
     (is (= (let
              [byte-message (.getBytes challenge-9-message)]
-             (pad-pkcs7 byte-message
+             (add-pkcs7-padding byte-message
                         challenge-9-block-size))
            challenge-9-padded-message))))
 
@@ -232,11 +232,310 @@
               prefix (map byte (repeat 32 \A))]
           (not (cbc? (oracle prefix)))))))
 
-(deftest challenge-12-first-block
-  (testing "Decryption of first ECB block."
-    (is (= (let [cipher-key (random-bytes 16)
-                 block-size (count cipher-key)
-                 plain-text (base64-string-to-bytes challenge-11-unknown-string)
-                 oracle (partial aes-ecb-oracle cipher-key plain-text)]
-             (bytes-to-string (break-ecb-block oracle block-size)))
-           "Rollin' in my 5."))))
+(deftest ^:challenge-12 ecb-decryption-simple
+  (testing "Decrypt an unknown string encrypted in ECB mode."
+    (is (= (let [plain-text (base64-string-to-bytes challenge-11-unknown-string)
+                 key (random-bytes 16)
+                 oracle (partial aes-ecb-oracle key plain-text)]
+              (break-ecb oracle))
+           (base64-string-to-bytes challenge-11-unknown-string)))))
+
+(deftest ^:challenge-13 key-value-decoding
+  (testing "Decode a list of key-value pairs that use the symbols = and &."
+    (is (= (kv-decode "foo=bar&baz=qux&zap=zazzle")
+           {"foo" "bar", "baz" "qux", "zap" "zazzle"}))))
+
+(deftest ^:challenge-13 key-value-encoding
+  (testing "Encode a map as key-value pairs that use the symbols = and &."
+    (is (= (kv-encode {"foo" "bar", "baz" "qux", "zap" "zazzle"})
+           "foo=bar&baz=qux&zap=zazzle"))))
+
+(deftest ^:challenge-13 profile-generation
+  (testing "Create a profile for a given email and return the kv-pair string."
+    (is (= (profile-for "foo@bar.com")
+           "email=foo@bar.com&uid=10&role=user"))))
+
+(deftest ^:challenge-13 profile-generation-bad-chars
+  (testing "Create a profile for a given email and return the kv-pair string. Remove & and = characters."
+    (is (= (profile-for "foo@bar.com&role=admin")
+           "email=foo@bar.comroleadmin&uid=10&role=user"))))
+
+(deftest ^:challenge-13 ecb-cut-and-paste
+  (testing "Create a profile with role=admin using the profile-for function as an oracle."
+    (is (= (let [key (random-bytes 16)
+                 cipher-text (set-admin-profile (partial profile-oracle key))
+                 plain-text (apply str (map char (decryption-oracle key cipher-text)))]
+             (get (kv-decode plain-text)
+                  "role"))
+           "admin"))))
+
+(deftest ^:challenge-14 ecb-prefix-length
+  (testing "Derive the size of a random prefix to an ecb oracle."
+    (is (let [plain-text (base64-string-to-bytes challenge-11-unknown-string)
+                 prefix (random-bytes (rand-int 32))
+                 key (random-bytes 16)
+                 oracle #(prefixed-ecb-oracle key prefix % plain-text)]
+             (= (get-prefix-length oracle)
+                (count prefix))))))
+
+(deftest ^:challenge-14 ecb-decryption-hard
+  (testing "Decrypt an unknown string encrypted in ECB mode that has a random static prefix."
+    (is (= (let [plain-text (base64-string-to-bytes challenge-11-unknown-string)
+                 prefix (random-bytes (rand-int 32))
+                 _ (println "prefix length=" (count prefix))
+                 key (random-bytes 16)
+                 oracle #(prefixed-ecb-oracle key prefix % plain-text)
+                 result (break-prefixed-ecb oracle)
+                 _ (println "--- Challenge 14 result ---")
+                 _ (println (apply str (map char result)))]
+             result)
+           (base64-string-to-bytes challenge-11-unknown-string)))))
+
+(deftest ^:challenge-15 good-padding
+  (testing "Validate good PKCS-7 padding."
+    (is (= (let [s "ICE ICE BABY"
+                 padding '(0x4 0x4 0x4 0x4)
+                 message (concat (map byte s) padding)]
+              (valid-padding? message))
+           true))))
+
+(deftest ^:challenge-15 remove-good-padding
+  (testing "Validate and remove good PKCS-7 padding."
+    (is (= (let [s "ICE ICE BABY"
+                 padding '(0x4 0x4 0x4 0x4)
+;                 message (map byte "ICE ICE BABY\u0404\u0404")]
+                 message (concat (map byte s) padding)]
+             (apply str (map char (remove-padding message))))
+           "ICE ICE BABY"))))
+
+(deftest ^:challenge-15 bad-padding
+  (testing "Invalidate incorrectly implemented PKCS-7 padding."
+    (is (= (let [s "ICE ICE BABY"
+                  padding '(1 2 3 4)
+                  message (concat (map byte s) padding)]
+              (valid-padding? s))
+           false))))
+
+(deftest ^:challenge-15 too-short-padding
+  (testing "Invalidate PKCS-7 padding that is too short."
+    (is (= (let [s "ICE ICE BABY"
+                 padding '(5 5 5 5)
+                 message (concat (map byte s) padding)]
+             (valid-padding? s))
+           false))))
+
+(deftest ^:challenge-16 cbc-bit-flipping
+  (testing "CBC bit flipping attack."
+    (let [key (random-bytes 16)
+          iv (random-bytes 16)
+          payload (concat (repeat 16 \A) (repeat 16 \B))
+          cipher-text (comment-oracle-encrypt iv key payload)
+          cipher-text (partition 16 cipher-text)
+          payload (map bit-xor (map byte "BBBBB;admin=true")
+                       (map bit-xor (nth cipher-text 2)
+                            (map byte (repeat 16 \B))))
+          cipher-text (flatten (concat (take 2 cipher-text)
+                                       payload
+                                       (drop 3 cipher-text)))
+          plain-text (comment-oracle-decrypt iv key cipher-text)]
+      (is (re-find #"admin=true" plain-text)))))
+
+; Sometimes this fails with an error caused by a failure to find any matches
+; for a byte. This seems to be a rare occurrence. The padding check is perhaps
+; overly strict and prone to both false positives and negatives when an adjacent
+; byte happens to be the padding byte. This possibility is mentioned in the
+; challenge. There is an element of probability to this technique.
+(deftest ^:challenge-17 cbc-padding-oracle-attack
+  (testing "Attack a CBC mode padding oracle."
+    (let [_ (println "Challenge 17")
+          key (random-bytes 16)
+          iv (random-bytes 16)
+;          cipher-text (random-string-oracle iv key)
+          cipher-text (repeatedly 16 #(random-string-oracle iv key))
+          oracle (partial padding-oracle iv key)
+          plain-text (map #(attack-padding-oracle oracle iv %) cipher-text)
+;          plain-text (attack-padding-oracle oracle iv cipher-text)
+          _ (println plain-text)]
+      (is (= nil "todo")))))
+
+(deftest ^:challenge-18 ctr-decryption
+  (testing "Implementation of CTR mode."
+    (let [_ (println "Challenge 18")
+          key (map byte "YELLOW SUBMARINE")
+          nonce (repeat 8 0)
+          s "L77na/nrFsKvynd6HzOoG7GHTLXsTVu9qvY/2syLXzhPweyyMTJULu/6/kXX0KSvoOLSFQ=="
+          cipher-text (base64-string-to-bytes s)
+          plain-text (aes-ctr key nonce cipher-text)
+          plain-text (apply str (map char plain-text))
+          _ (println plain-text)]
+      (is (= plain-text
+             "Yo, VIP Let's kick it Ice, Ice, baby Ice, Ice, baby ")))))
+
+(deftest ^:challenge-19 ctr-fixed-nonce-attack
+  (testing "Decrypt a series of cipher texts that have reused a nonce."
+    (let [nonce (repeat 8 0)
+          key (random-bytes 16)
+          s '("SSBoYXZlIG1ldCB0aGVtIGF0IGNsb3NlIG9mIGRheQ=="
+               "Q29taW5nIHdpdGggdml2aWQgZmFjZXM="
+               "RnJvbSBjb3VudGVyIG9yIGRlc2sgYW1vbmcgZ3JleQ=="
+               "RWlnaHRlZW50aC1jZW50dXJ5IGhvdXNlcy4="
+               "SSBoYXZlIHBhc3NlZCB3aXRoIGEgbm9kIG9mIHRoZSBoZWFk"
+               "T3IgcG9saXRlIG1lYW5pbmdsZXNzIHdvcmRzLA=="
+               "T3IgaGF2ZSBsaW5nZXJlZCBhd2hpbGUgYW5kIHNhaWQ="
+               "UG9saXRlIG1lYW5pbmdsZXNzIHdvcmRzLA=="
+               "QW5kIHRob3VnaHQgYmVmb3JlIEkgaGFkIGRvbmU="
+               "T2YgYSBtb2NraW5nIHRhbGUgb3IgYSBnaWJl"
+               "VG8gcGxlYXNlIGEgY29tcGFuaW9u"
+               "QXJvdW5kIHRoZSBmaXJlIGF0IHRoZSBjbHViLA=="
+               "QmVpbmcgY2VydGFpbiB0aGF0IHRoZXkgYW5kIEk="
+               "QnV0IGxpdmVkIHdoZXJlIG1vdGxleSBpcyB3b3JuOg=="
+               "QWxsIGNoYW5nZWQsIGNoYW5nZWQgdXR0ZXJseTo="
+               "QSB0ZXJyaWJsZSBiZWF1dHkgaXMgYm9ybi4="
+               "VGhhdCB3b21hbidzIGRheXMgd2VyZSBzcGVudA=="
+               "SW4gaWdub3JhbnQgZ29vZCB3aWxsLA=="
+               "SGVyIG5pZ2h0cyBpbiBhcmd1bWVudA=="
+               "VW50aWwgaGVyIHZvaWNlIGdyZXcgc2hyaWxsLg=="
+               "V2hhdCB2b2ljZSBtb3JlIHN3ZWV0IHRoYW4gaGVycw=="
+               "V2hlbiB5b3VuZyBhbmQgYmVhdXRpZnVsLA=="
+               "U2hlIHJvZGUgdG8gaGFycmllcnM/"
+               "VGhpcyBtYW4gaGFkIGtlcHQgYSBzY2hvb2w="
+               "QW5kIHJvZGUgb3VyIHdpbmdlZCBob3JzZS4="
+               "VGhpcyBvdGhlciBoaXMgaGVscGVyIGFuZCBmcmllbmQ="
+               "V2FzIGNvbWluZyBpbnRvIGhpcyBmb3JjZTs="
+               "SGUgbWlnaHQgaGF2ZSB3b24gZmFtZSBpbiB0aGUgZW5kLA=="
+               "U28gc2Vuc2l0aXZlIGhpcyBuYXR1cmUgc2VlbWVkLA=="
+               "U28gZGFyaW5nIGFuZCBzd2VldCBoaXMgdGhvdWdodC4="
+               "VGhpcyBvdGhlciBtYW4gSSBoYWQgZHJlYW1lZA=="
+               "QSBkcnVua2VuLCB2YWluLWdsb3Jpb3VzIGxvdXQu"
+               "SGUgaGFkIGRvbmUgbW9zdCBiaXR0ZXIgd3Jvbmc="
+               "VG8gc29tZSB3aG8gYXJlIG5lYXIgbXkgaGVhcnQs"
+               "WWV0IEkgbnVtYmVyIGhpbSBpbiB0aGUgc29uZzs="
+               "SGUsIHRvbywgaGFzIHJlc2lnbmVkIGhpcyBwYXJ0"
+               "SW4gdGhlIGNhc3VhbCBjb21lZHk7"
+               "SGUsIHRvbywgaGFzIGJlZW4gY2hhbmdlZCBpbiBoaXMgdHVybiw="
+               "VHJhbnNmb3JtZWQgdXR0ZXJseTo="
+               "QSB0ZXJyaWJsZSBiZWF1dHkgaXMgYm9ybi4=")
+          encrypt (partial aes-ctr key nonce)
+          cipher-texts (map (comp encrypt base64-string-to-bytes) s)]
+          (is (= (attack-fixed-nonce-ctr cipher-texts)
+                 "todo")))))
+
+; todo: map base64 onto results then do a set comparison
+(deftest ^:challenge-20 ctr-fixed-nonce-attack-2
+  (testing "Decrypt a series of cipher texts that have reused a nonce. I don't understand the difference between this and 19"
+    (with-open [r (clojure.java.io/reader "test/crypto_pals/20.txt")]
+      (let [nonce (repeat 8 0)
+            key (random-bytes 16)
+            encrypt (partial aes-ctr key nonce)
+            lines (line-seq r)
+            cipher-texts (map (comp encrypt base64-string-to-bytes) lines)]
+        (is (= (attack-fixed-nonce-ctr cipher-texts)
+               "todo"))))))
+
+; "I'm rated \"R\"...this is a warning, ya better void / Poets are paranoid, DJ's D-stroyed"
+; "Cuz I came back to attack others in spite- / Strike like lightnin', It's quite frightenin'!"
+; "But don't be afraid in the dark, in a park / Not a scream or a cry, or a bark, more like a spark;"
+; "Ya tremble like a alcoholic, muscles tighten up / What's that, lighten up! You see a sight but"
+; "Suddenly you feel like your in a horror flick / You grab your heart then wish for tomorrow quick!"
+; "Music's the clue, when I come your warned / Apocalypse Now, when I'm done, ya gone!"
+; "Haven't you ever heard of a MC-murderer? / This is the death penalty,and I'm servin' a"
+; "Death wish, so come on, step to this / Hysterical idea for a lyrical professionist!"
+; "Friday the thirteenth, walking down Elm Street / You come in my realm ya get beat!"
+; "This is off limits, so your visions are blurry / All ya see is the meters at a volume"
+; "Terror in the styles, never error-files / Indeed I'm known-your exiled!"
+; "For those that oppose to be level or next to this / I ain't a devil and this ain't the Exorcist!"
+; "Worse than a nightmare, you don't have to sleep a wink / The pain's a migraine every time ya think"
+; "Flashbacks interfere, ya start to hear: / The R-A-K-I-M in your ear;"
+; "Then the beat is hysterical / That makes Eric go get a ax and chops the wack"
+; "Soon the lyrical format is superior / Faces of death remain"
+; "MC's decaying, cuz they never stayed / The scene of a crime every night at the show"
+; "The fiend of a rhyme on the mic that you know / It's only one capable, breaks-the unbreakable"
+; "Melodies-unmakable, pattern-unescapable / A horn if want the style I posses"
+; "I bless the child, the earth, the gods and bomb the rest / For those that envy a MC it can be"
+; "Hazardous to your health so be friendly / A matter of life and death, just like a etch-a-sketch"
+; "Shake 'till your clear, make it disappear, make the next / After the ceremony, let the rhyme rest in peace"
+; "If not, my soul'll release! / The scene is recreated, reincarnated, updated, I'm glad you made it"
+; "Cuz your about to see a disastrous sight / A performance never again performed on a mic:"
+; "Lyrics of fury! A fearified freestyle! / The \"R\" is in the house-too much tension!"
+; "Make sure the system's loud when I mention / Phrases that's fearsome"
+; "You want to hear some sounds that not only pounds but please your eardrums; / I sit back and observe the whole scenery"
+; "Then nonchalantly tell you what it mean to me / Strictly business I'm quickly in this mood"
+; "And I don't care if the whole crowd's a witness! / I'm a tear you apart but I'm a spare you a heart"
+; "Program into the speed of the rhyme, prepare to start / Rhythm's out of the radius, insane as the craziest"
+; "Musical madness MC ever made, see it's / Now an emergency, open-heart surgery"
+; "Open your mind, you will find every word'll be / Furier than ever, I remain the furture"
+; "Battle's tempting...whatever suits ya! / For words the sentence, there's no resemblance"
+; "You think you're ruffer, then suffer the consequences! / I'm never dying-terrifying results"
+; "I wake ya with hundreds of thousands of volts / Mic-to-mouth resuscitation, rhythm with radiation"
+; "Novocain ease the pain it might save him / If not, Eric B.'s the judge, the crowd's the jury"
+; "Yo Rakim, what's up? / Yo, I'm doing the knowledge, E., man I'm trying to get paid in full"
+; "Well, check this out, since Norby Walters is our agency, right? / True"
+; "Kara Lewis is our agent, word up / Zakia and 4th and Broadway is our record company, indeed"
+; "Okay, so who we rollin' with then? We rollin' with Rush / Of Rushtown Management"
+; "Check this out, since we talking over / This def beat right here that I put together"
+; "I wanna hear some of them def rhymes, you know what I'm sayin'? / And together, we can get paid in full"
+; "Thinkin' of a master plan / 'Cuz ain't nuthin' but sweat inside my hand"
+; "So I dig into my pocket, all my money is spent / So I dig deeper but still comin' up with lint"
+; "So I start my mission, leave my residence / Thinkin' how could I get some dead presidents"
+; "I need money, I used to be a stick-up kid / So I think of all the devious things I did"
+; "I used to roll up, this is a hold up, ain't nuthin' funny / Stop smiling, be still, don't nuthin' move but the money"
+; "But now I learned to earn 'cuz I'm righteous / I feel great, so maybe I might just"
+; "Search for a nine to five, if I strive / Then maybe I'll stay alive"
+; "So I walk up the street whistlin' this / Feelin' out of place 'cuz, man, do I miss"
+; "A pen and a paper, a stereo, a tape of / Me and Eric B, and a nice big plate of"
+; "Fish, which is my favorite dish / But without no money it's still a wish"
+; "'Cuz I don't like to dream about gettin' paid / So I dig into the books of the rhymes that I made"
+; "So now to test to see if I got pull / Hit the studio, 'cuz I'm paid in full"
+; "Rakim, check this out, yo / You go to your girl house and I'll go to mine"
+; "'Cause my girl is definitely mad / 'Cause it took us too long to do this album"
+; "Yo, I hear what you're saying / So let's just pump the music up"
+; "And count our money / Yo, well check this out, yo Eli"
+; "Turn down the bass down / And let the beat just keep on rockin'"
+; "And we outta here / Yo, what happened to peace? / Peace"
+
+(deftest ^:challenge-21 mt19937-implementation-zero-seed
+  (testing "Personal implementation of Mersenne Twister 19937 with a zero seed."
+    (let []
+      (is (= (take 8 (mt19937 0))
+             [2357136044
+              2546248239
+              3071714933
+              3626093760
+              2588848963
+              3684848379
+              2340255427
+              3638918503])))))
+
+(deftest ^:challenge-21 mt19937-implementation-nonzero-seed
+  (testing "Personal implementation of Mersenne Twister 19937 with a non-zero seed."
+    (let []
+      (is (= (take 8 (mt19937 0xabad1dea))
+             [1893883372
+              1267561620
+              233634371
+              786079957
+              1296461189
+              749209128
+              1235140554
+              2616046267])))))
+
+; todo: Generate more than n (624) random numbers
+
+(deftest ^:challenge-22 brute-force-mt19937-time-seed
+  (testing "Brute force the seed of an MT19937 PRNG that was set as the current time."
+    (let [rand-sleep (fn [] (Thread/sleep (* 1000 (+ 40 (rand-int 960)))))
+          _ (println "Starting test at" (quot (System/currentTimeMillis) 1000))
+          _ (rand-sleep)
+          seed (quot (System/currentTimeMillis) 1000)
+          r (mt19937 seed)
+          _ (rand-sleep)
+          _ (println "Starting to guess at" (quot (System/currentTimeMillis) 1000))
+          guess (brute-mt19937-time-seed (first r))
+          _ (println "Guess:" guess)]
+      (is (= guess seed)))))
+
+(deftest ^:challenge-23 clone-mt19937
+  (testing "Clone the internal state of an MT19937 PRNG by observing its output."
+    (let []
+      (is (= 0 1)))
+    ))
